@@ -11,3 +11,20 @@ I do live in Germany so I limit the ETFs that I can get in Germany and also the 
 - matplotlib
 - seaborn
 - investpy
+
+### Files in repo:
+- ETF_scraping_download.ipynb - Jupyter notebook with the main portion of the work
+- README.md - readme for the project
+
+### Findings:
+- plenty of ETFs that have > 30% change in the past year - but that is not representative due to Covid.
+- I will move to analysing larger historical dataset to check for a longer trend.
+- I understand that there are multiple variables that would have an effect on the prices of ETFs and their RoI, but I only use that to filter the names of highly yielding ETFs.
+
+Once a more robust analysis is done I will post it on Medium.
+
+
+### Acknowledgments:
+- stackoverflow (of course) 
+- Investment.com
+- investpy
