@@ -14,11 +14,11 @@
 
 import investpy
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import seaborn as sns
-import numpy as np
 
-# # Get funds in Germany
+# ### Get funds in Germany
 
 funds = investpy.get_etfs(country='germany')
 
@@ -30,7 +30,7 @@ print(f"There are {len(funds)} funds avaliable in Germany")
 
 n = 0
 for fund in funds.name:
-    if (fund.find('iShares') != -1 and fund.find('Acc') != -1):
+    if (fund.find('iShares') != -1 and fund.find('Acc') != -1) or (fund.find('Lyxor') != -1 and fund.find('Acc') != -1): # or (fund.find('Amundi') != -1)
         if n == 0:
             df = investpy.etfs.get_etf_information(etf=fund, country='germany', as_json=False)
             n += 1
@@ -38,13 +38,11 @@ for fund in funds.name:
             df_2 = investpy.etfs.get_etf_information(etf=fund, country='germany', as_json=False)
             df = pd.concat([df,df_2])
 
-# There seems to be a lot of ETFs which are duplicated in the dataset. Let us first remove the rows with duplicate names.
-
-df.drop_duplicates(subset='ETF Name', keep='first', inplace=True)
-
 # Check for NaNs in the information dataframes
 
 df.head()
+
+df = df.drop_duplicates(subset=['ETF Name'])
 
 nan_columns = set(df.columns[df.isnull().mean() > 0])
 all_nan_cols = set(df.columns[df.isnull().mean() == 1])
@@ -52,9 +50,16 @@ print(f"The columns that have NaNs are: {nan_columns}. And the fields which are 
 
 df = df.drop(all_nan_cols, axis=1);
 
-print(f"We need to now sort out the {nan_columns-all_nan_cols} columns")
+try:
+    df = df.drop(['Dividends (TTM)', 'Dividend Yield'], axis=1)
+except KeyError:
+    pass
+
+print(f"We need to now sort out the {nan_columns-all_nan_cols} columns. If only Asset Class has NaNs we leave them as NaNs")
 
 # Some of the columns which have NaNs are categorical - we leave them NaNs, the numerical columns we exchange NaNs with 0. 
+
+df
 
 for column in df.columns:
     print(f"{column} - {df[column].dtypes}")
@@ -84,17 +89,30 @@ sns.heatmap(df.corr(), annot=True)
 
 # ## Let's have a look at which ETFs shall I invest in based on the historical values
 
-# Considering I do not have unlimited funds I will get the ETFs which have > 30% year to year change in the past year. This will be later extended to more old historical values. 
+# Considering I do not have unlimited funds I will get the ETFs which have > 40% year to year change in the past year. This will be later extended to more old historical values. 
 
-df_high_roi = df[df['1-Year Change'] > 0.3]
+df_high_roi = df[df['1-Year Change'] > 0.4]
 
 df_high_roi
 
-# ### We can see that there are a lot of high RoI over the past year. But how does this compare over the historical data
+# Now we might want to check the historical data for the ETFs with high RoI. 
 
-for etf in df_high_roi["ETF Name"]:
-    df_temp = investpy.etfs.get_etf_historical_data(etf=etf, country='germany', from_date='01/01/2010', to_date='01/04/2021', interval='Weekly')
-    plt.plot(df_temp.index[:-1],np.diff(df_temp['Close']), label=etf)
+etf_change = []
+for fund in df_high_roi['ETF Name']:
+    df_1 = investpy.etfs.get_etf_historical_data(etf=fund, country='germany', from_date='01/01/2010', to_date='01/03/2021', interval='Monthly')
+    monthly_close = df_1['Close'].tolist()
+    monthly_change = []
+    for idx in range(len(monthly_close)-1):
+        monthly_change.append((monthly_close[idx+1] - monthly_close[idx])/monthly_close[idx])
+    etf_change.append(np.array(monthly_change)*100)
+    plt.plot(np.array(monthly_change)*100, label=fund)
     plt.legend()
+
+# I want to check what the constant will be if I fit a linear line to each of the ETFs. Usually ETFs do move in a linear fashion. 
+
+for idx in range(len(etf_change)):
+    print(f"ETF {df_high_roi['ETF Name'].iloc[idx]} has a std monthly close change of {np.std(etf_change[idx])} %")
+
+
 
 
